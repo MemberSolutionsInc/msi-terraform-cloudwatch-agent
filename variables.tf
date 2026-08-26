@@ -78,3 +78,9 @@ variable "association_name" {
   type        = string
   default     = "msi-cloudwatch-agent-config"
 }
+
+variable "tags" {
+  description = "Tags applied to the SSM parameter holding the Agent config. aws_ssm_association does not support tagging, so they aren't applied there."
+  type        = map(string)
+  default     = {}
+}
