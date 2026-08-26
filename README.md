@@ -100,7 +100,7 @@ To target explicit instances instead of a tag, set `target_instance_ids`
 (this takes precedence over `target_tag_key`/`target_tag_value` whenever it
 is non-empty).
 
-### Why PhysicalDisk always collects `_Total`, not per-drive
+### Why PhysicalDisk always collects `*` (all instances), and alarms target `_Total`
 
 CloudWatch metric alarms can't use the `SEARCH()` function (`ValidationError:
 SEARCH is not supported on Metric Alarms` — confirmed live, not a doc
@@ -108,10 +108,19 @@ assumption), so an alarm on Windows `PhysicalDisk "% Disk Time"` needs a
 dimension value known ahead of time. The physical-disk instance name
 Windows assigns (e.g. `"0 C:"`) isn't predictable from Terraform the way a
 drive letter is, but `"_Total"` — Perfmon's well-known aggregate instance
-across all physical disks — is. This module always collects `_Total` for
-PhysicalDisk regardless of `windows_disk_resources`, so
-msi-terraform-cloudwatch-alarms' disk-I/O-wait alarm has a fixed dimension
-to alarm on.
+across all physical disks — is, so that's what
+msi-terraform-cloudwatch-alarms' disk-I/O-wait alarm targets.
+
+The module itself requests `resources = ["*"]` for PhysicalDisk (all
+instances), not `["_Total"]` alone. Confirmed live: requesting only
+`"_Total"` as a single named resource made CWAgent publish it for a few
+minutes after startup, then silently stop with no error logged — while the
+underlying Windows Perfmon counter kept working fine when queried directly
+(`Get-Counter`). Requesting `"*"` (matching the pattern that already works
+reliably for `Network Interface`) avoids whatever internal CWAgent quirk
+that single-named-resource request triggers. `windows_disk_resources` isn't
+used here since the alarm still keys off `_Total` specifically, not a
+per-drive value.
 
 ## Inputs
 

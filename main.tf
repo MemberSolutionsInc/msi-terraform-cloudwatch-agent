@@ -59,12 +59,17 @@ locals {
       measurement = [
         "% Disk Time",
       ]
-      # "_Total" is the well-known Windows Perfmon aggregate instance across
-      # all physical disks — deliberately NOT var.windows_disk_resources
-      # (drive letters). CloudWatch alarms can't use SEARCH() to match an
-      # unknown per-disk instance name, so collecting only the aggregate
-      # gives alarms a single, predictable dimension value to alarm on.
-      resources                   = ["_Total"]
+      # Deliberately "*" (all instances), not just ["_Total"] — confirmed
+      # live that requesting only "_Total" as a single named resource made
+      # CWAgent publish it for ~5-6 minutes after startup then silently stop
+      # (no error logged; the underlying Windows Perfmon counter kept
+      # working fine when queried directly via Get-Counter, so this is a
+      # CWAgent collection quirk, not an OS-level problem). Network
+      # Interface, which already used "*", published continuously the whole
+      # time. windows_disk_resources isn't used here since alarms still key
+      # off "_Total" specifically (a plain per-drive instance name like
+      # "0 C:" isn't predictable from Terraform).
+      resources                   = ["*"]
       metrics_collection_interval = var.metrics_collection_interval
     }
     "Network Interface" = {
