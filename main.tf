@@ -49,7 +49,12 @@ locals {
       measurement = [
         "% Disk Time",
       ]
-      resources = var.windows_disk_resources
+      # "_Total" is the well-known Windows Perfmon aggregate instance across
+      # all physical disks — deliberately NOT var.windows_disk_resources
+      # (drive letters). CloudWatch alarms can't use SEARCH() to match an
+      # unknown per-disk instance name, so collecting only the aggregate
+      # gives alarms a single, predictable dimension value to alarm on.
+      resources = ["_Total"]
     }
     "Network Interface" = {
       measurement = [
