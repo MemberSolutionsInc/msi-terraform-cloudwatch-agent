@@ -100,13 +100,26 @@ To target explicit instances instead of a tag, set `target_instance_ids`
 (this takes precedence over `target_tag_key`/`target_tag_value` whenever it
 is non-empty).
 
+### Why PhysicalDisk always collects `_Total`, not per-drive
+
+CloudWatch metric alarms can't use the `SEARCH()` function (`ValidationError:
+SEARCH is not supported on Metric Alarms` — confirmed live, not a doc
+assumption), so an alarm on Windows `PhysicalDisk "% Disk Time"` needs a
+dimension value known ahead of time. The physical-disk instance name
+Windows assigns (e.g. `"0 C:"`) isn't predictable from Terraform the way a
+drive letter is, but `"_Total"` — Perfmon's well-known aggregate instance
+across all physical disks — is. This module always collects `_Total` for
+PhysicalDisk regardless of `windows_disk_resources`, so
+msi-terraform-cloudwatch-alarms' disk-I/O-wait alarm has a fixed dimension
+to alarm on.
+
 ## Inputs
 
 | Name | Description | Type | Default | Required |
 |------|-------------|------|---------|----------|
 | `os_type` | `"linux"` or `"windows"` — selects the Agent config schema | `string` | `"linux"` | no |
 | `mount_paths` | Linux only. Disk paths to monitor for `disk_used_percent` metrics | `list(string)` | `["/"]` | no |
-| `windows_disk_resources` | Windows only. LogicalDisk/PhysicalDisk instances to monitor (drive letters or `["*"]`) | `list(string)` | `["*"]` | no |
+| `windows_disk_resources` | Windows only. LogicalDisk drive letters to monitor for `% Free Space` (e.g. `["C:"]`, or `["*"]` for all) — does **not** affect PhysicalDisk, which always collects the `_Total` aggregate (see below) | `list(string)` | `["*"]` | no |
 | `metrics_collection_interval` | Interval, in seconds, at which the CloudWatch Agent collects metrics | `number` | `60` | no |
 | `target_instance_ids` | Explicit list of EC2 instance IDs to target. Takes precedence over the tag inputs when non-empty | `list(string)` | `[]` | no |
 | `target_tag_key` | Tag key used to target instances when `target_instance_ids` is empty | `string` | `""` | no |
