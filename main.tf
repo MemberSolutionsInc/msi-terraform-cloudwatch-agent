@@ -10,6 +10,11 @@ locals {
         "disk_used_percent",
       ]
       resources = var.mount_paths
+      # Without this, disk_used_percent also carries a "device" dimension
+      # (e.g. /dev/xvda1) alongside "path" — since that value isn't knowable
+      # ahead of time from Terraform, alarms keyed only on {InstanceId, path}
+      # wouldn't match the metric at all.
+      drop_device = true
     }
     diskio = {
       measurement = [
@@ -55,22 +60,36 @@ locals {
     }
   }
 
-  cloudwatch_agent_config = {
-    metrics = {
-      # Without this, CWAgent writes these metrics with no per-instance
-      # dimension at all — every instance sharing a config would report into
-      # the same undimensioned series, making per-instance alarming
-      # impossible. ${aws:InstanceId} is a CWAgent-native placeholder
-      # resolved from IMDS at agent startup.
-      append_dimensions = {
-        InstanceId = "$${aws:InstanceId}"
-      }
-      metrics_collection_interval = var.metrics_collection_interval
-      metrics_collected           = var.os_type == "windows" ? local.windows_metrics_collected : local.linux_metrics_collected
+  # jsonencode() each OS's full config to a string *before* branching on
+  # os_type — the linux/windows metrics_collected objects have different
+  # attributes, and a ternary that returns one or the other directly fails
+  # Terraform's static type unification ("Inconsistent conditional result
+  # types"). Strings unify fine.
+  agent_config_base = {
+    # Without this, CWAgent writes these metrics with no per-instance
+    # dimension at all — every instance sharing a config would report into
+    # the same undimensioned series, making per-instance alarming
+    # impossible. ${aws:InstanceId} is a CWAgent-native placeholder
+    # resolved from IMDS at agent startup.
+    append_dimensions = {
+      InstanceId = "$${aws:InstanceId}"
     }
+    metrics_collection_interval = var.metrics_collection_interval
   }
 
-  cloudwatch_agent_config_json = jsonencode(local.cloudwatch_agent_config)
+  linux_config_json = jsonencode({
+    metrics = merge(local.agent_config_base, {
+      metrics_collected = local.linux_metrics_collected
+    })
+  })
+
+  windows_config_json = jsonencode({
+    metrics = merge(local.agent_config_base, {
+      metrics_collected = local.windows_metrics_collected
+    })
+  })
+
+  cloudwatch_agent_config_json = var.os_type == "windows" ? local.windows_config_json : local.linux_config_json
 
   # SSM String parameters are capped at 4KB; fall back to Advanced tier for
   # larger configs (e.g. many mount_paths/windows_disk_resources entries).
@@ -100,6 +119,8 @@ resource "aws_ssm_parameter" "cloudwatch_agent_config" {
   value = local.cloudwatch_agent_config_json
 
   description = "CloudWatch Agent configuration (${var.os_type}) managed by msi-terraform-cloudwatch-agent"
+
+  tags = var.tags
 }
 
 resource "aws_ssm_association" "cloudwatch_agent" {
