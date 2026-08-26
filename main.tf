@@ -1,9 +1,15 @@
 locals {
+  # metrics_collection_interval is set per-category below, not as a
+  # top-level default under "metrics" — confirmed live against a real
+  # (older, v1.0) CloudWatch Agent: "Additional property
+  # metrics_collection_interval is not allowed" under path /metrics. Setting
+  # it per-category is the form supported across agent versions.
   linux_metrics_collected = {
     mem = {
       measurement = [
         "mem_used_percent",
       ]
+      metrics_collection_interval = var.metrics_collection_interval
     }
     disk = {
       measurement = [
@@ -14,7 +20,8 @@ locals {
       # (e.g. /dev/xvda1) alongside "path" — since that value isn't knowable
       # ahead of time from Terraform, alarms keyed only on {InstanceId, path}
       # wouldn't match the metric at all.
-      drop_device = true
+      drop_device                 = true
+      metrics_collection_interval = var.metrics_collection_interval
     }
     diskio = {
       measurement = [
@@ -24,6 +31,7 @@ locals {
         "diskio_reads",
         "diskio_writes",
       ]
+      metrics_collection_interval = var.metrics_collection_interval
     }
   }
 
@@ -38,12 +46,14 @@ locals {
       measurement = [
         "% Committed Bytes In Use",
       ]
+      metrics_collection_interval = var.metrics_collection_interval
     }
     LogicalDisk = {
       measurement = [
         "% Free Space",
       ]
-      resources = var.windows_disk_resources
+      resources                   = var.windows_disk_resources
+      metrics_collection_interval = var.metrics_collection_interval
     }
     PhysicalDisk = {
       measurement = [
@@ -54,14 +64,16 @@ locals {
       # (drive letters). CloudWatch alarms can't use SEARCH() to match an
       # unknown per-disk instance name, so collecting only the aggregate
       # gives alarms a single, predictable dimension value to alarm on.
-      resources = ["_Total"]
+      resources                   = ["_Total"]
+      metrics_collection_interval = var.metrics_collection_interval
     }
     "Network Interface" = {
       measurement = [
         "Packets Received Errors",
         "Packets Outbound Errors",
       ]
-      resources = ["*"]
+      resources                   = ["*"]
+      metrics_collection_interval = var.metrics_collection_interval
     }
   }
 
@@ -79,7 +91,6 @@ locals {
     append_dimensions = {
       InstanceId = "$${aws:InstanceId}"
     }
-    metrics_collection_interval = var.metrics_collection_interval
   }
 
   linux_config_json = jsonencode({
