@@ -57,6 +57,14 @@ locals {
 
   cloudwatch_agent_config = {
     metrics = {
+      # Without this, CWAgent writes these metrics with no per-instance
+      # dimension at all — every instance sharing a config would report into
+      # the same undimensioned series, making per-instance alarming
+      # impossible. ${aws:InstanceId} is a CWAgent-native placeholder
+      # resolved from IMDS at agent startup.
+      append_dimensions = {
+        InstanceId = "$${aws:InstanceId}"
+      }
       metrics_collection_interval = var.metrics_collection_interval
       metrics_collected           = var.os_type == "windows" ? local.windows_metrics_collected : local.linux_metrics_collected
     }
