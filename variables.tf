@@ -20,6 +20,19 @@ variable "mount_paths" {
   default     = ["/"]
 }
 
+variable "linux_network_interfaces" {
+  description = <<-EOT
+    Linux only. List of network interface names to monitor for error
+    counters (telegraf "net" plugin err_in/err_out), e.g. ["ens5"] - the
+    standard primary interface name on current-generation (ENA/Nitro)
+    instances, though not universal (older Xen-based instances use "eth0").
+    Defaults to "*" (all non-loopback interfaces) rather than hardcoding a
+    single name, matching the Windows Network Interface plugin's approach.
+  EOT
+  type        = list(string)
+  default     = ["*"]
+}
+
 variable "windows_disk_resources" {
   description = "Windows only. List of LogicalDisk/PhysicalDisk instances to monitor (drive letters, e.g. [\"C:\", \"D:\"], or [\"*\"] for all)."
   type        = list(string)

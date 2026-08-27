@@ -71,6 +71,7 @@ module "cloudwatch_agent" {
   target_tag_value = "enabled"
 
   mount_paths                 = ["/", "/data"]
+  linux_network_interfaces    = ["*"]
   metrics_collection_interval = 60
 
   association_name = "efitawsprod-cloudwatch-agent"
@@ -128,6 +129,7 @@ per-drive value.
 |------|-------------|------|---------|----------|
 | `os_type` | `"linux"` or `"windows"` — selects the Agent config schema | `string` | `"linux"` | no |
 | `mount_paths` | Linux only. Disk paths to monitor for `disk_used_percent` metrics | `list(string)` | `["/"]` | no |
+| `linux_network_interfaces` | Linux only. Interface names to monitor for `err_in`/`err_out` counters (e.g. `["ens5"]`), or `["*"]` for all non-loopback interfaces | `list(string)` | `["*"]` | no |
 | `windows_disk_resources` | Windows only. LogicalDisk drive letters to monitor for `% Free Space` (e.g. `["C:"]`, or `["*"]` for all) — does **not** affect PhysicalDisk, which always collects the `_Total` aggregate (see below) | `list(string)` | `["*"]` | no |
 | `metrics_collection_interval` | Interval, in seconds, at which the CloudWatch Agent collects metrics | `number` | `60` | no |
 | `target_instance_ids` | Explicit list of EC2 instance IDs to target. Takes precedence over the tag inputs when non-empty | `list(string)` | `[]` | no |

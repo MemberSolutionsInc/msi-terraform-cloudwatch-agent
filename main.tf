@@ -33,6 +33,14 @@ locals {
       ]
       metrics_collection_interval = var.metrics_collection_interval
     }
+    net = {
+      measurement = [
+        "err_in",
+        "err_out",
+      ]
+      resources                   = var.linux_network_interfaces
+      metrics_collection_interval = var.metrics_collection_interval
+    }
   }
 
   # Windows CloudWatch Agent uses performance-counter object/counter names,
