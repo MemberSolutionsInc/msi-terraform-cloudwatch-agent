@@ -59,17 +59,23 @@ locals {
       measurement = [
         "% Disk Time",
       ]
-      # Deliberately "*" (all instances), not just ["_Total"] — confirmed
-      # live that requesting only "_Total" as a single named resource made
-      # CWAgent publish it for ~5-6 minutes after startup then silently stop
-      # (no error logged; the underlying Windows Perfmon counter kept
-      # working fine when queried directly via Get-Counter, so this is a
-      # CWAgent collection quirk, not an OS-level problem). Network
-      # Interface, which already used "*", published continuously the whole
-      # time. windows_disk_resources isn't used here since alarms still key
-      # off "_Total" specifically (a plain per-drive instance name like
-      # "0 C:" isn't predictable from Terraform).
-      resources                   = ["*"]
+      # "*" alone (v0.2.5) confirmed live to enumerate real per-disk
+      # instances (e.g. "0 C:") reliably, but never "_Total" — root-caused
+      # to win_perf_counters' documented behavior of excluding the "_Total"
+      # aggregate from wildcard expansion unless IncludeTotal is set (CW
+      # Agent's JSON schema doesn't expose that field directly). A lone
+      # ["_Total"] (pre-v0.2.5) took a different, non-wildcard code path in
+      # the same plugin and published for ~5-6 minutes after startup then
+      # silently stopped (no error; the underlying Perfmon counter kept
+      # working fine via direct Get-Counter query) — a separate quirk from
+      # the exclusion above. Explicitly naming "_Total" alongside "*" goes
+      # through neither problematic path: the wildcard keeps enumerating
+      # per-disk instances as before, while "_Total" is queried as an
+      # explicit named instance rather than relying on wildcard expansion
+      # to include it. windows_disk_resources isn't used here since alarms
+      # still key off "_Total" specifically (a plain per-drive instance
+      # name like "0 C:" isn't predictable from Terraform).
+      resources                   = ["*", "_Total"]
       metrics_collection_interval = var.metrics_collection_interval
     }
     "Network Interface" = {
