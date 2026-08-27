@@ -101,6 +101,17 @@ To target explicit instances instead of a tag, set `target_instance_ids`
 (this takes precedence over `target_tag_key`/`target_tag_value` whenever it
 is non-empty).
 
+### Why Linux disk I/O wait uses `cpu_usage_iowait`, not `diskio_io_time`
+
+`diskio_io_time` (collected, see `diskio` above) is a raw monotonically-increasing
+millisecond counter, not a percentage — and like Windows' per-drive PhysicalDisk
+instance names, its `device` dimension (e.g. `nvme1n1`) isn't predictable from
+Terraform ahead of time. `cpu_usage_iowait` (telegraf's `cpu` plugin,
+`totalcpu = true`) is already a system-wide percentage with no per-device or
+per-core dimension, sidestepping both problems the same way Windows'
+`PhysicalDisk` `_Total` aggregate does.
+msi-terraform-cloudwatch-alarms' Linux disk-I/O-wait alarm targets this metric.
+
 ### Why PhysicalDisk always collects `*` (all instances), and alarms target `_Total`
 
 CloudWatch metric alarms can't use the `SEARCH()` function (`ValidationError:
