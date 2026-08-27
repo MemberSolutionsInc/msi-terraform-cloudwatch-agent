@@ -41,6 +41,22 @@ locals {
       resources                   = var.linux_network_interfaces
       metrics_collection_interval = var.metrics_collection_interval
     }
+    cpu = {
+      measurement = [
+        "usage_iowait",
+      ]
+      # totalcpu (not resources) - a single system-wide aggregate, no
+      # per-core "cpu" dimension. This is deliberately used as the Linux
+      # equivalent of Windows' PhysicalDisk "_Total": disk_io_time (below)
+      # is a raw monotonic ms-busy counter, not a percentage, and per-device
+      # diskio dimensions are exactly as unpredictable from Terraform as
+      # Windows' per-drive PhysicalDisk instance names are. usage_iowait is
+      # already a percentage and system-wide, sidestepping both problems -
+      # msi-terraform-cloudwatch-alarms' Linux disk-I/O-wait alarm targets
+      # this metric, not diskio_io_time.
+      totalcpu                    = true
+      metrics_collection_interval = var.metrics_collection_interval
+    }
   }
 
   # Windows CloudWatch Agent uses performance-counter object/counter names,
